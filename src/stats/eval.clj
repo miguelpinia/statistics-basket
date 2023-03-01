@@ -4,7 +4,8 @@
             [incanter.stats :as s]
             [incanter.charts :as c]
             [clojure.walk :refer [keywordize-keys]]
-            [clojure.pprint :refer [pprint]]))
+            [clojure.pprint :refer [pprint]]
+            [stats.utils :as utils]))
 
 
 ;; Best algs
@@ -14,17 +15,24 @@
 ;; - SQRT
 ;; - Fetch&Inc
 
-(defn load-json [file-name]
+(defn load-json
+  "Transform the json `file-name` into a incarter dataset."
+  [file-name]
   (->> file-name
-       slurp
-       json/read-str
-       keywordize-keys
+       utils/json-to-map
        (conj [])
        i/to-dataset))
 
-(defn get-data [data column-name] (map #(column-name %) data))
+#_(let [test "data/2023-02-13-20:28:37_experiment_time_execution.json"]
+  (load-json test))
 
-(defn to-indexed [row] (keep-indexed #(identity [%1 %2]) row))
+(defn get-data
+  "Extracts "
+  [data column-name]
+  (map #(column-name %) data))
+
+(defn to-indexed [row]
+  (keep-indexed #(identity [%1 %2]) row))
 
 (defn get-data-by-col [data col]
   (->> (get-data data col)
@@ -93,6 +101,21 @@
 (def file-full-last "data/2023-04-17-20:56:19_experiment_time_execution.json")
 (def file-complete "data/2023-04-19-18:18:23_experiment_time_execution.json")
 (def file-queues "data/2023-04-20-06:38:14_queue_time_execution.json")
+(def file-queues-new "data/2023-11-15-17:12:42_queue_time_execution.json")
+(def file-queues-imate "data/2023-11-16-15:46:04_queue_time_execution.json")
+(def file-i9-fences "data/2023-11-17-08:19:48_queue_time_execution-fences-i9.json")
+(def file-i9-no-fences "data/2023-11-17-09:19:15_queue_time_execution-no-fences-i9.json")
+(def file-enqueue "data/2023-11-17-09:30:59_queue_time_execution-enqueue.json")
+(def test-queues-local "data/test_queue.json")
+(def test-queues-i9 "data/test_queue_i9.json")
+(def test-queues-tr "data/test_queue_threadripper.json")
+
+(def config-queues {:FAAQUEUE  "Fetch & Add Queue",
+                    :LCRQQUEUE "LCRQ Queue",
+                    :LLICQUEUE "LLIC Queue, using kbasket-fai and llic-cas"
+                    :MSQUEUE   "Michael-Scott Queue"
+                    :SBQQUEUE  "Scalable Basket Queue (Ostrovsky - Morrison)"
+                    :YMCQUEUE  "Yang - Mellor-Crummey Queue"})
 
 (defn plot-means-all
   ([data title] (plot-means-all data title all-config (range 1 65)))
@@ -133,7 +156,7 @@
                           (dissoc vs k))))))
          (i/view)))))
 
-(let [file    file-complete
+#_(let [file    file-complete
       json    (load-json file)
       c-names (map #(keyword (str "iter-" %)) (range (i/$ :iterations json)))
       data    (map #(i/$ % json) c-names)
@@ -156,18 +179,31 @@
   ;; (keys (first data))
   (plot-means-all data "Statistics 10'000'000 operations" config))
 
-(let [file    file-queues
+(let [file    test-queues-tr
       json    (load-json file)
       c-names (map #(keyword (str "iter-" %)) (range (i/$ :iterations json)))
       data    (map #(i/$ % json) c-names)
-      config  {;; :RWCAS    "RW LL/IC CAS Basket"
+      config  {:FAAQUEUE  "Fetch & Add Queue",
+               :LCRQQUEUE "LCRQ Queue",
+               :LLICQUEUE "LLIC Queue, using kbasket-fai and llic-cas"
+               :MSQUEUE   "Michael-Scott Queue"
+               :SBQQUEUE  "Scalable Basket Queue (Ostrovsky - Morrison)"
+               :YMCQUEUE  "Yang - Mellor-Crummey Queue"}]
+  (plot-means-all data "Enqueues-Dequeues 1'000'000 operations (threadripper)" config))
+
+
+(let [file    file-queues-new
+      json    (load-json file)
+      c-names (map #(keyword (str "iter-" %)) (range (i/$ :iterations json)))
+      data    (map #(i/$ % json) c-names)
+      config  {:RWCAS    "RW LL/IC CAS Basket"
                :RWFAI    "RW LL/IC FAI Basket"
-               ;; :RW16CAS  "RW 16 bytes padding LL/IC CAS Basket"
-               ;; :RW16FAI  "RW 16 bytes padding LL/IC FAI Basket"
-               ;; :CASCAS   "CAS LL/IC CAS Basket"
+               :RW16CAS  "RW 16 bytes padding LL/IC CAS Basket"
+               :RW16FAI  "RW 16 bytes padding LL/IC FAI Basket"
+               :CASCAS   "CAS LL/IC CAS Basket"
                :CASFAI   "CAS LL/IC FAI Basket"
-               ;; :RWG16CAS "RW grouped 16 bytes padding LL/IC CAS Basket"
-               ;; :RWG16FAI "RW grouped 16 bytes padding LL/IC FAI Basket"
+               :RWG16CAS "RW grouped 16 bytes padding LL/IC CAS Basket"
+               :RWG16FAI "RW grouped 16 bytes padding LL/IC FAI Basket"
                }]
   (plot-means-all data "Enqueues-Dequeues 5'000'000 operations" config))
 
@@ -254,12 +290,12 @@
 
 
 ;; 5,000,000 operations
+
 #_(do
-  (def json-test-1 "data/2023-02-13-20:28:37_experiment_time_execution.json")
-  (def d-1 (load-json json-test-1))
-  (def column-names-1 (map #(keyword (str "iter-" %)) (range (i/$ :iterations d-1))))
-  (def data-1 (map #(->> d-1 (i/$ %)) column-names-1))
-  (plot-means data-1 "Statistics 5'000'000 operations"))
+
+    (def column-names-1 (map #(keyword (str "iter-" %)) (range (i/$ :iterations d-1))))
+    (def data-1 (map #(->> d-1 (i/$ %)) column-names-1))
+    (plot-means data-1 "Statistics 5'000'000 operations"))
 
 #_(do
   (def json-test-2 "data/2023-02-14-20:37:42_experiment_time_execution.json")
@@ -385,7 +421,7 @@
         _ (println {:stat stat :df1 df1 :df2 df2})]
     (s/cdf-f stat :df1 df1 :df2 df2 :lower-tail? false)))
 
-(println (s/cdf-f 6815.027770493435 :df1 5 :df2 234 :lower-tail? false))
+#_(println (s/cdf-f 6815.027770493435 :df1 5 :df2 234 :lower-tail? false))
 
 (def last-file "data/2023-03-01-22:29:34_experiment_time_execution.json")
 (def last-file-40 "data/2023-03-02-00:42:46_experiment_time_execution.json")
@@ -562,9 +598,9 @@
            :n            n
            :p-value      p-value}))
 
-(pprint (f-stats-data file-queues))
+#_(pprint (f-stats-data file-queues))
 
-(pprint (f-stats-data last-file-40-wm))
+#_(pprint (f-stats-data last-file-40-wm))
 
 
 #_(pprint result)
