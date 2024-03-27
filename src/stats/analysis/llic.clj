@@ -58,3 +58,7 @@
         (with-out-str (json/pprint-json result))))
 
 #_(to-pretty-json "data/LLIC/insert_extract/64/analysis.json" (analyze-entries "extract_insert" 64 "data/LLIC/insert_extract/64"))
+
+#_(to-pretty-json "data/queue/inner/32/analysis.json" (analyze-entries "extract_insert" 32 "data/queue/inner/32/"))
+
+#_(to-pretty-json "data/queue/inner/64/analysis.json" (analyze-entries "extract_insert" 64 "data/queue/inner/64/"))
